@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>シックな壁時計 - 1分目盛り付き</title>
+    <style>
+        /* ==========================================
+           1. デザインスタイルガイド（CSS）
+           画像に基づくシックで洗練された配色・形状
+           ========================================== */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: #2b3a4a; /* シックなダークネイビー背景 */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* 時計の外観コンテナ */
+        .clock-container {
+            position: relative;
+            width: 85vw;
+            height: 85vw;
+            max-width: 520px;
+            max-height: 520px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* 時計本体（外枠と文字盤） */
+        .clock-face {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background-color: #ffffff;
+            border: 20px solid #eb4d3d; /* コーラルレッドの外枠 */
+            border-radius: 50%;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.35);
+        }
+
+        /* 1分ごとの目盛り（Ticks）コンテナ */
+        .ticks-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+        }
+
+        /* 個別の目盛り線 */
+        .tick {
+            position: absolute;
+            left: 50%;
+            top: 4px;
+            width: 2px;
+            height: 50%;
+            transform-origin: 50% 100%;
+            display: flex;
+            justify-content: center;
+        }
+
+        /* 1分ごとの細い目盛り */
+        .tick-inner {
+            width: 2px;
+            height: 8px;
+            background-color: #cbd5e1;
+            border-radius: 1px;
+        }
+
+        /* 5分ごとの太く長めの目盛り */
+        .tick-inner.five-minute {
+            width: 3px;
+            height: 14px;
+            background-color: #64748b;
+            border-radius: 2px;
+        }
+
+        /* 数字レイヤー */
+        .numbers-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* 各数字ノード */
+        .number {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: #222222; /* 画像同様の太くスッキリしたダークカラー */
+        }
+
+        /* 針のベース設定 */
+        .hand {
+            position: absolute;
+            bottom: 50%;
+            left: 50%;
+            transform-origin: 50% 100%;
+            border-radius: 10px;
+            z-index: 10;
+        }
+
+        /* 時針（短針） */
+        .hour-hand {
+            width: 10px;
+            height: 29%;
+            background-color: #2b3a4a;
+            margin-left: -5px;
+            border-radius: 5px;
+            z-index: 12;
+        }
+
+        /* 分針（長針） */
+        .minute-hand {
+            width: 6px;
+            height: 41%;
+            background-color: #2b3a4a;
+            margin-left: -3px;
+            border-radius: 3px;
+            z-index: 13;
+        }
+
+        /* 秒針 */
+        .second-hand {
+            width: 3px;
+            height: 45%;
+            background-color: #eb4d3d;
+            margin-left: -1.5px;
+            z-index: 14;
+            border-radius: 2px;
+        }
+
+        /* 秒針の下部（飛び出している部分） */
+        .second-hand::after {
+            content: '';
+            position: absolute;
+            bottom: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 3px;
+            height: 20px;
+            background-color: #eb4d3d;
+            border-radius: 2px;
+        }
+
+        /* 中央の固定ピン */
+        .center-cap {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background-color: #2b3a4a;
+            border: 3px solid #eb4d3d;
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 15;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ==========================================
+         2. メインUI構造（HTML）
+         ========================================== -->
+    <div class="clock-container">
+        <div class="clock-face">
+            <!-- 1分ごとの目盛り -->
+            <div class="ticks-layer" id="ticksLayer"></div>
+
+            <!-- 文字盤の数字 -->
+            <div class="numbers-layer" id="numbersLayer"></div>
+
+            <!-- 各種針 -->
+            <div class="hand hour-hand" id="hourHand"></div>
+            <div class="hand minute-hand" id="minuteHand"></div>
+            <div class="hand second-hand" id="secondHand"></div>
+
+            <!-- 中心ピン -->
+            <div class="center-cap"></div>
+        </div>
+    </div>
+
+    <!-- ==========================================
+         3. 各ロジック（JavaScript）
+         ========================================== -->
+    <script>
+        // 1分刻み（60本）の目盛りを生成
+        const ticksLayer = document.getElementById('ticksLayer');
+        for (let i = 0; i < 60; i++) {
+            const tick = document.createElement('div');
+            tick.className = 'tick';
+            tick.style.transform = `rotate(${i * 6}deg)`;
+
+            const tickInner = document.createElement('div');
+            // 5分毎の目盛りと1分毎の目盛りを区別
+            if (i % 5 === 0) {
+                tickInner.className = 'tick-inner five-minute';
+            } else {
+                tickInner.className = 'tick-inner';
+            }
+
+            tick.appendChild(tickInner);
+            ticksLayer.appendChild(tick);
+        }
+
+        // 1〜12の数字を配置
+        const numbersLayer = document.getElementById('numbersLayer');
+        const radiusPercent = 38; // 外枠からの距離調整
+
+        for (let i = 1; i <= 12; i++) {
+            const numberNode = document.createElement('div');
+            numberNode.className = 'number';
+            numberNode.innerText = i;
+
+            // 12時（上）を基準に30度刻みで配置
+            const angleDeg = i * 30;
+            const angleRad = (angleDeg - 90) * (Math.PI / 180);
+
+            const x = 50 + radiusPercent * Math.cos(angleRad);
+            const y = 50 + radiusPercent * Math.sin(angleRad);
+
+            numberNode.style.left = `calc(${x}% - 25px)`;
+            numberNode.style.top = `calc(${y}% - 25px)`;
+
+            numbersLayer.appendChild(numberNode);
+        }
+
+        // 針を取得
+        const hourHand = document.getElementById('hourHand');
+        const minuteHand = document.getElementById('minuteHand');
+        const secondHand = document.getElementById('secondHand');
+
+        // 時計の針を更新する関数
+        function updateClock() {
+            const now = new Date();
+
+            const seconds = now.getSeconds();
+            const milliseconds = now.getMilliseconds();
+            const minutes = now.getMinutes();
+            const hours = now.getHours();
+
+            // 滑らかに動く角度設定
+            const secondDeg = ((seconds + milliseconds / 1000) / 60) * 360;
+            const minuteDeg = ((minutes + seconds / 60) / 60) * 360;
+            const hourDeg = (((hours % 12) + minutes / 60 + seconds / 3600) / 12) * 360;
+
+            // 回転度の適用
+            secondHand.style.transform = `rotate(${secondDeg}deg)`;
+            minuteHand.style.transform = `rotate(${minuteDeg}deg)`;
+            hourHand.style.transform = `rotate(${hourDeg}deg)`;
+        }
+
+        // 定期更新（約60fpsでスムーズなアニメーション）
+        setInterval(updateClock, 50);
+
+        // 初期描画
+        updateClock();
+    </script>
+</body>
+</html>
